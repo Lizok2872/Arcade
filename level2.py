@@ -4,7 +4,7 @@ import math
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 650
-SCREEN_TITLE = "Кристаллические Приключения - Уровень 1"
+SCREEN_TITLE = "Кристаллические Приключения - Уровень 2"
 CHARACTER_SCALING = 0.5
 TILE_SCALING = 0.5
 CRYSTAL_SCALING = 0.3
@@ -12,6 +12,7 @@ PLAYER_MOVEMENT_SPEED = 5
 GRAVITY = 1
 PLAYER_JUMP_SPEED = 20
 SPIKE_SCALING = 0.5
+SMALL_SPIKE_SCALING = 0.3
 
 
 class Particle:
@@ -78,11 +79,11 @@ class CrystalExplosion:
         return len(self.particles) == 0
 
 
-class Level1(arcade.View):
+class Level2(arcade.View):
     def __init__(self):
         super().__init__()
-        self.level_name = "Уровень 1"
-        self.level = 1
+        self.level_name = "Уровень 2"
+        self.level = 2
         self.scene = None
         self.score = 0
         self.crystals_collected = 0
@@ -121,6 +122,8 @@ class Level1(arcade.View):
         self.scene.add_sprite_list("Walls", use_spatial_hash=True)
         self.scene.add_sprite_list("Crystals", use_spatial_hash=True)
         self.scene.add_sprite_list("Spikes", use_spatial_hash=True)
+        self.scene.add_sprite_list("SmallSpikes", use_spatial_hash=True)
+        self.scene.add_sprite_list("MovingPlatforms")
 
         self.player_sprite = arcade.Sprite(
             ":resources:images/animated_characters/female_adventurer/femaleAdventurer_idle.png",
@@ -134,9 +137,12 @@ class Level1(arcade.View):
         self.create_level()
         self.create_crystals()
         self.create_hazards()
+        self.create_small_spikes_on_platforms()
+        self.create_moving_platforms()
 
         self.all_walls = arcade.SpriteList()
         self.all_walls.extend(self.scene.get_sprite_list("Walls"))
+        self.all_walls.extend(self.scene.get_sprite_list("MovingPlatforms"))
 
         self.physics_engine = arcade.PhysicsEnginePlatformer(
             self.player_sprite,
@@ -149,11 +155,11 @@ class Level1(arcade.View):
 
         platforms = [
             (0, 0, 15),
-            (400, 180, 8),
-            (800, 120, 6),
-            (1100, 220, 8),
-            (1500, 160, 6),
-            (1900, 280, 10),
+            (350, 150, 5),
+            (700, 100, 4),
+            (1200, 250, 8),
+            (1800, 200, 6),
+            (2300, 300, 12),
         ]
 
         for x, y, width in platforms:
@@ -167,12 +173,11 @@ class Level1(arcade.View):
         crystal_texture = ":resources:images/items/gemBlue.png"
 
         crystal_positions = [
-            (150, 100),
-            (600, 230),
-            (950, 170),
-            (1300, 270),
-            (1700, 220),
-            (2050, 330),
+            (200, 100),
+            (550, 200),
+            (1250, 300),
+            (1850, 250),
+            (2350, 350),
         ]
 
         self.total_crystals = len(crystal_positions)
@@ -187,7 +192,9 @@ class Level1(arcade.View):
         spike_texture = ":resources:images/tiles/spikes.png"
 
         spike_positions = [
-            (700, 65), (732, 65), (764, 65)
+            (300, 65), (332, 65),
+            (1100, 115), (1132, 115),
+            (1600, 65), (1632, 65)
         ]
 
         for x, y in spike_positions:
@@ -195,6 +202,41 @@ class Level1(arcade.View):
             spike.center_x = x
             spike.center_y = y
             self.scene.add_sprite("Spikes", spike)
+
+    def create_small_spikes_on_platforms(self):
+        spike_texture = ":resources:images/tiles/spikes.png"
+
+        spike_positions = [
+            (380, 180),
+            (1230, 280),
+        ]
+
+        for x, y in spike_positions:
+            spike = arcade.Sprite(spike_texture, SMALL_SPIKE_SCALING)
+            spike.center_x = x
+            spike.center_y = y
+            self.scene.add_sprite("SmallSpikes", spike)
+
+    def create_moving_platforms(self):
+        platform_texture = ":resources:images/tiles/stoneMid.png"
+
+        platform1 = arcade.Sprite(platform_texture, TILE_SCALING)
+        platform1.center_x = 850
+        platform1.center_y = 120
+        platform1.change_x = 1.5
+        platform1.boundary_left = 800
+        platform1.boundary_right = 1150
+        self.scene.add_sprite("MovingPlatforms", platform1)
+        self.moving_platforms.append(platform1)
+
+        platform2 = arcade.Sprite(platform_texture, TILE_SCALING)
+        platform2.center_x = 1550
+        platform2.center_y = 100
+        platform2.change_y = 1.8
+        platform2.boundary_top = 220
+        platform2.boundary_bottom = 80
+        self.scene.add_sprite("MovingPlatforms", platform2)
+        self.moving_platforms.append(platform2)
 
     def on_draw(self):
         self.clear()
@@ -208,7 +250,7 @@ class Level1(arcade.View):
             self.level_name,
             SCREEN_WIDTH // 2,
             SCREEN_HEIGHT - 100,
-            arcade.color.GREEN,
+            arcade.color.ORANGE,
             20,
             anchor_x="center"
         )
@@ -284,7 +326,11 @@ class Level1(arcade.View):
             self.player_sprite, self.scene.get_sprite_list("Spikes")
         )
 
-        if spikes_hit:
+        small_spikes_hit = arcade.check_for_collision_with_list(
+            self.player_sprite, self.scene.get_sprite_list("SmallSpikes")
+        )
+
+        if spikes_hit or small_spikes_hit:
             if self.player_lives > 1:
                 self.player_lives -= 1
                 arcade.play_sound(self.hurt_sound, volume=0.5)
@@ -341,7 +387,7 @@ class Level1(arcade.View):
 
             def on_key_press(self, key, modifiers):
                 if key == arcade.key.ENTER:
-                    game_view = Level1()
+                    game_view = Level2()
                     game_view.setup()
                     self.window.show_view(game_view)
                 elif key == arcade.key.ESCAPE:
@@ -354,10 +400,33 @@ class Level1(arcade.View):
         self.window.show_view(game_over_view)
 
     def update_moving_objects(self):
-        pass
+        for platform in self.moving_platforms:
+            platform.center_x += platform.change_x
+            platform.center_y += platform.change_y
+
+            if hasattr(platform, 'boundary_left') and platform.boundary_left is not None:
+                if platform.center_x <= platform.boundary_left:
+                    platform.change_x *= -1
+                    platform.center_x = platform.boundary_left
+
+            if hasattr(platform, 'boundary_right') and platform.boundary_right is not None:
+                if platform.center_x >= platform.boundary_right:
+                    platform.change_x *= -1
+                    platform.center_x = platform.boundary_right
+
+            if hasattr(platform, 'boundary_top') and platform.boundary_top is not None:
+                if platform.center_y >= platform.boundary_top:
+                    platform.change_y *= -1
+                    platform.center_y = platform.boundary_top
+
+            if hasattr(platform, 'boundary_bottom') and platform.boundary_bottom is not None:
+                if platform.center_y <= platform.boundary_bottom:
+                    platform.change_y *= -1
+                    platform.center_y = platform.boundary_bottom
 
     def on_update(self, delta_time):
         self.physics_engine.update()
+        self.update_moving_objects()
         for explosion in self.explosions[:]:
             explosion.update()
             if explosion.is_finished():
@@ -424,7 +493,7 @@ class Level1(arcade.View):
                     anchor_x="center"
                 )
                 arcade.draw_text(
-                    f"Уровень 1 пройден!",
+                    f"Уровень 2 пройден!",
                     SCREEN_WIDTH // 2,
                     SCREEN_HEIGHT // 2 - 50,
                     arcade.color.WHITE,
@@ -458,7 +527,7 @@ class Level1(arcade.View):
 
 def main():
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-    game_view = Level1()
+    game_view = Level2()
     game_view.setup()
     window.show_view(game_view)
     arcade.run()
